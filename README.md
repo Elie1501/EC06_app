@@ -4,10 +4,6 @@ Mini API Express (Node.js 20) exposant `GET /health`, industrialisée avec
 **Git + Docker + GitHub Actions**. Le code applicatif n'a pas été modifié :
 l'épreuve porte sur la chaîne de livraison mise autour.
 
-[![CI/CD](https://github.com/Elie1501/EC06_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Elie1501/EC06_app/actions/workflows/ci.yml)
-![Node](https://img.shields.io/badge/node-20-blue)
-![Docker](https://img.shields.io/badge/docker-multistage-blue)
-
 ---
 
 ## Démarrage rapide (local)
@@ -127,9 +123,11 @@ docker compose run --rm app npm test    # lint/test comme en CI
 ```
 
 **Fait / non fait :**
-- ✅ Piliers 1-2-3 complets : Git + GitFlow, Dockerfile multistage non-root,
+- Piliers 1-2-3 complets : Git + GitFlow, Dockerfile multistage non-root,
   compose app+DB, pipeline `quality → build → deploy` vert sur push.
-- ✅ Bonus réalisés : push GHCR + tags cohérents, cache npm + cache de build
+
+
+- Bonus réalisés : push GHCR + tags cohérents, cache npm + cache de build
   GHA, trigger `pull_request`, artefacts (tests + deploy.log), badges,
   **matrice de build Node 20/22**, **scan de vulnérabilités Trivy**
   (image runtime, sévérités CRITICAL/HIGH, non-bloquant).
@@ -150,10 +148,11 @@ docker compose run --rm app npm test    # lint/test comme en CI
 
 Voir le dossier [`docs/captures-ci/`](docs/captures-ci/) :
 
-| Capture | Contenu |
-|---|---|
-| `01-ci-run-vert.png` | Runs GitHub Actions verts (`quality`, `build`, `deploy`) |
-| `02-ci-run-rouge.png` | Un run en échec pendant la mise en place du scan Trivy, corrigé au commit suivant (voir l'historique de la PR [#4](https://github.com/Elie1501/EC06_app/pull/4)) |
-| `03-pr-fusionnee.png` | PR [#3](https://github.com/Elie1501/EC06_app/pull/3) (`develop → main`) fusionnée, description structurée, 8 checks passés |
-| `04-protection-branche-main.png` | Ruleset `protect-main` : PR obligatoire, force push bloqué |
-| `05-protection-branche-status-checks.png` | Status checks requis avant merge sur `main` |
+| Capture                                   | Contenu                                                                                                                                                          |
+|-------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `01-ci-run-vert.png`                      | Runs GitHub Actions verts (`quality`, `build`, `deploy`)                                                                                                         |
+| `02-ci-run-rouge.png`                     | Un run en échec pendant la mise en place du scan Trivy, corrigé au commit suivant (voir l'historique de la PR [#4](https://github.com/Elie1501/EC06_app/pull/4)) |
+| `03-pr-fusionnee.png`                     | PR [#3](https://github.com/Elie1501/EC06_app/pull/3) (`develop → main`) fusionnée, description structurée, 8 checks passés                                       |
+| `04-protection-branche-main.png`          | Ruleset `protect-main` : PR obligatoire, force push bloqué                                                                                                       |
+| `05-protection-branche-status-checks.png` | Status checks requis avant merge sur `main`                                                                                                                      |
+| `06-Trivy.png`                            | Scan de l'image (Trivy), vulnérabilités qui s'affiche (CVE, sévérité, versions correctives)                                                                      |
