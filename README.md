@@ -145,3 +145,15 @@ docker compose run --rm app npm test    # lint/test comme en CI
 - Déploiement réel (SSH sur VM ou PaaS gratuit) via GitHub Environments +
   approbation manuelle.
 - Releases automatisées (tags sémantiques).
+
+## Captures et preuves
+
+Voir le dossier [`docs/captures-ci/`](docs/captures-ci/) :
+
+| Capture | Contenu |
+|---|---|
+| `01-ci-run-vert.png` | Runs GitHub Actions verts (`quality`, `build`, `deploy`) |
+| `02-ci-run-rouge.png` | Un run en échec pendant la mise en place du scan Trivy, corrigé au commit suivant (voir l'historique de la PR [#4](https://github.com/Elie1501/EC06_app/pull/4)) |
+| `03-pr-fusionnee.png` | PR [#3](https://github.com/Elie1501/EC06_app/pull/3) (`develop → main`) fusionnée, description structurée, 8 checks passés |
+| `04-protection-branche-main.png` | Ruleset `protect-main` : PR obligatoire, force push bloqué |
+| `05-protection-branche-status-checks.png` | Status checks requis avant merge sur `main` |
