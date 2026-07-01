@@ -1,17 +1,21 @@
 # syntax=docker/dockerfile:1
 
 # =====================================================================
-#  Dockerfile multistage pour SkillHub API (Node.js 20)
+#  Dockerfile multistage pour SkillHub API (Node.js 20 par défaut)
 #
 #  - builder    : installe TOUTES les dépendances (dev incluses) et sert
 #                 de base "développement / CI" (lint + tests dans Docker).
 #  - prod-deps  : installe uniquement les dépendances de production.
 #  - runtime    : image finale LÉGÈRE (alpine), utilisateur NON-ROOT,
 #                 EXPOSE + HEALTHCHECK. C'est le stage par défaut.
+#
+#  NODE_VERSION est paramétrable (bonus : matrice de build multi-Node
+#  dans la CI, ex. --build-arg NODE_VERSION=22).
 # =====================================================================
+ARG NODE_VERSION=20
 
 # ---------- Stage 1 : builder (deps complètes, base dev/CI) ----------
-FROM node:20-alpine AS builder
+FROM node:${NODE_VERSION}-alpine AS builder
 WORKDIR /app
 
 # Copier d'abord les manifestes pour profiter du cache de couches Docker
@@ -28,13 +32,13 @@ COPY eslint.config.js ./
 CMD ["npm", "start"]
 
 # ---------- Stage 2 : dépendances de production seules ----------
-FROM node:20-alpine AS prod-deps
+FROM node:${NODE_VERSION}-alpine AS prod-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 # ---------- Stage 3 : runtime (image finale légère, non-root) ----------
-FROM node:20-alpine AS runtime
+FROM node:${NODE_VERSION}-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 

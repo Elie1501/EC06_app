@@ -15,7 +15,9 @@ services:
     build:
       context: .
       target: builder
-    image: skillhub-api:dev
+      args:
+        NODE_VERSION: ${NODE_VERSION:-20}
+    image: skillhub-api:dev-node${NODE_VERSION:-20}
     env_file:
       - .env
     ports:

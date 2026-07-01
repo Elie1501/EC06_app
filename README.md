@@ -78,8 +78,8 @@ flowchart LR
     push([push / PR]) --> quality
 
     subgraph CI
-      quality["quality<br/>lint + test<br/>DANS Docker<br/>(docker compose run)"]
-      build["build<br/>image runtime<br/>tags: sha + latest(main)<br/>push GHCR (main)"]
+      quality["quality (matrice Node 20/22)<br/>lint + test<br/>DANS Docker<br/>(docker compose run)"]
+      build["build<br/>image runtime + scan Trivy<br/>tags: sha + latest(main)<br/>push GHCR (main)"]
       deploy["deploy<br/>simulé (deploy.sh)<br/>artefact deploy.log"]
     end
 
@@ -92,8 +92,8 @@ flowchart LR
 
 | Job       | Déclencheur        | Rôle                                                                 |
 |-----------|--------------------|----------------------------------------------------------------------|
-| `quality` | tout push / PR     | `cp .env.dist .env`, puis `docker compose run --rm app npm run lint` et `npm test`. Publie l'artefact `test-results`. Cache npm activé. |
-| `build`   | après `quality`    | Construit l'image **runtime** (`docker/build-push-action`, target `runtime`). Tags : sha court partout + `latest` sur `main`. Push vers **GHCR** uniquement sur `main`. Cache de build GHA. |
+| `quality` | tout push / PR     | **Matrice Node 20 / 22** : `cp .env.dist .env`, puis `docker compose run --rm app npm run lint` et `npm test` (image buildée avec `--build-arg NODE_VERSION`). Publie un artefact `test-results-node<version>` par version. Cache npm par version de Node. |
+| `build`   | après `quality`    | Construit l'image **runtime** en local (target `runtime`), la **scanne avec Trivy** (CRITICAL/HIGH, non-bloquant), puis pousse vers **GHCR** uniquement sur `main`. Tags : sha court partout + `latest` sur `main`. Cache de build GHA. |
 | `deploy`  | `main` uniquement  | Exécute `deploy.sh` (simulé), produit et publie `deploy.log` comme artefact. Utilise l'environnement GitHub `production`. |
 
 ## 3. Gestion des secrets
@@ -130,11 +130,18 @@ docker compose run --rm app npm test    # lint/test comme en CI
 - ✅ Piliers 1-2-3 complets : Git + GitFlow, Dockerfile multistage non-root,
   compose app+DB, pipeline `quality → build → deploy` vert sur push.
 - ✅ Bonus réalisés : push GHCR + tags cohérents, cache npm + cache de build
-  GHA, trigger `pull_request`, artefacts (tests + deploy.log), badges.
+  GHA, trigger `pull_request`, artefacts (tests + deploy.log), badges,
+  **matrice de build Node 20/22**, **scan de vulnérabilités Trivy**
+  (image runtime, sévérités CRITICAL/HIGH, non-bloquant).
+- ⏳ Non fait : déploiement réel (le job `deploy` reste **simulé** par
+  défaut, conformément à l'énoncé — aucune cible/VM disponible pendant
+  l'épreuve). Un squelette de job SSH réel, documenté et commenté
+  (donc inactif, zéro risque sur la CI), est fourni en bas de
+  `.github/workflows/ci.yml` avec les étapes d'activation.
 
 **Améliorations futures envisageables :**
-- Scan d'image (Trivy / Grype / Docker Scout) en amont du push.
+- Rendre le scan Trivy bloquant une fois les CVE de base traitées.
 - Image finale **distroless** pour réduire encore la surface d'attaque.
 - Déploiement réel (SSH sur VM ou PaaS gratuit) via GitHub Environments +
   approbation manuelle.
-- Matrice de build multi-versions de Node, releases automatisées (tags).
+- Releases automatisées (tags sémantiques).
