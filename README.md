@@ -134,7 +134,10 @@ docker compose run --rm app npm test    # lint/test comme en CI
   **matrice de build Node 20/22**, **scan de vulnérabilités Trivy**
   (image runtime, sévérités CRITICAL/HIGH, non-bloquant).
 - ⏳ Non fait : déploiement réel (le job `deploy` reste **simulé** par
-  défaut, conformément à l'énoncé).
+  défaut, conformément à l'énoncé — aucune cible/VM disponible pendant
+  l'épreuve). Un squelette de job SSH réel, documenté et commenté
+  (donc inactif, zéro risque sur la CI), est fourni en bas de
+  `.github/workflows/ci.yml` avec les étapes d'activation.
 
 **Améliorations futures envisageables :**
 - Rendre le scan Trivy bloquant une fois les CVE de base traitées.
