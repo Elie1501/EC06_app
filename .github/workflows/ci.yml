@@ -17,8 +17,16 @@ jobs:
   # Job 1 — QUALITY : lint + tests exécutés DANS Docker (via compose)
   # ------------------------------------------------------------------
   quality:
-    name: Quality (lint + test dans Docker)
+    name: Quality (Node ${{ matrix.node_version }}, lint + test dans Docker)
     runs-on: ubuntu-latest
+    # Matrice de build : lint + test rejoués sur plusieurs versions de
+    # Node (le Dockerfile accepte NODE_VERSION en build-arg).
+    strategy:
+      fail-fast: false
+      matrix:
+        node_version: [20, 22]
+    env:
+      NODE_VERSION: ${{ matrix.node_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,15 +36,15 @@ jobs:
       - name: Préparer le .env depuis .env.dist
         run: cp .env.dist .env
 
-      # Cache des dépendances npm pour accélérer les runs.
+      # Cache des dépendances npm pour accélérer les runs (clé par version de Node).
       - name: Cache npm
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
-          restore-keys: ${{ runner.os }}-npm-
+          key: ${{ runner.os }}-npm-${{ matrix.node_version }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-${{ matrix.node_version }}-
 
-      - name: Construire l'image applicative (stage builder)
+      - name: Construire l'image applicative (stage builder, Node ${{ matrix.node_version }})
         run: docker compose build app
 
       - name: Lint (dans Docker)
@@ -51,7 +59,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: test-results-node${{ matrix.node_version }}
           path: reports/
 
   # ------------------------------------------------------------------
@@ -81,6 +89,38 @@ jobs:
             type=sha,format=short
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
+      # Build local (jamais de push direct) pour pouvoir scanner l'image
+      # AVANT toute éventuelle mise en registre.
+      - name: Build de l'image runtime (local, pour scan)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runtime
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extraire le premier tag (pour le scan)
+        id: first_tag
+        run: echo "tag=$(printf '%s' '${{ steps.meta.outputs.tags }}' | head -n1)" >> "$GITHUB_OUTPUT"
+
+      # Scan de vulnérabilités (bonus), via l'image Docker officielle de
+      # Trivy (plus robuste qu'une action tierce dépendante d'un binaire
+      # téléchargé). Volontairement non-bloquant (--exit-code 0) pour ne
+      # pas casser le pipeline sur des CVE de l'image de base node:alpine
+      # hors de notre contrôle ; le rapport reste visible dans les logs.
+      - name: Scan de l'image (Trivy)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --severity CRITICAL,HIGH \
+            --exit-code 0 \
+            --format table \
+            "${{ steps.first_tag.outputs.tag }}"
+
       # Connexion à GHCR uniquement sur main, avec le GITHUB_TOKEN
       # (secret injecté automatiquement, jamais en clair).
       - name: Connexion à GHCR (sur main)
@@ -91,16 +131,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build (+ push sur main) de l'image runtime
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: runtime
-          push: ${{ github.ref == 'refs/heads/main' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Pousser l'image vers GHCR (sur main)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          while IFS= read -r tag; do
+            [ -n "$tag" ] && docker push "$tag"
+          done <<< "${{ steps.meta.outputs.tags }}"
 
   # ------------------------------------------------------------------
   # Job 3 — DEPLOY : déclenché uniquement sur main. Simulé par défaut.
@@ -128,3 +164,48 @@ jobs:
         with:
           name: deploy-log
           path: deploy.log
+
+  # ------------------------------------------------------------------
+  # [BONUS non activé] Déploiement RÉEL par SSH — squelette documenté.
+  #
+  # Non activé faute de cible réelle (VM) disponible pendant l'épreuve.
+  # Pour l'activer :
+  #   1. Générer une paire de clés SSH dédiée au déploiement.
+  #   2. Ajouter la clé PRIVÉE en secret GitHub `DEPLOY_SSH_KEY`, et
+  #      `DEPLOY_HOST` / `DEPLOY_USER` (déjà utilisés en mode simulé).
+  #   3. Renommer ce job (retirer le préfixe "x-") et retirer le "deploy"
+  #      simulé ci-dessus, ou le garder comme fallback sur les autres
+  #      branches.
+  #
+  # x-deploy-ssh-real:
+  #   name: Déploiement réel (SSH)
+  #   runs-on: ubuntu-latest
+  #   needs: build
+  #   if: github.ref == 'refs/heads/main'
+  #   environment: production
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Configurer la clé SSH
+  #       uses: webfactory/ssh-agent@v0.9.0
+  #       with:
+  #         ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+  #
+  #     - name: Déployer sur la VM cible
+  #       env:
+  #         DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+  #         DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+  #       run: |
+  #         ssh -o StrictHostKeyChecking=accept-new "$DEPLOY_USER@$DEPLOY_HOST" '
+  #           docker pull ghcr.io/${{ github.repository }}:latest &&
+  #           docker compose -f docker-compose.prod.yml up -d --no-build &&
+  #           docker image prune -f
+  #         '
+  #
+  #     - name: Vérification post-déploiement (/health)
+  #       env:
+  #         DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+  #       run: |
+  #         ssh -o StrictHostKeyChecking=accept-new "$DEPLOY_USER@$DEPLOY_HOST" \
+  #           'curl -fsS http://localhost:3000/health'
