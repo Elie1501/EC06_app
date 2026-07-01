@@ -1,0 +1,19 @@
+# Dépendances
+node_modules/
+
+# Environnement — le .env NE DOIT JAMAIS être versionné (secrets)
+.env
+.env.local
+.env.*.local
+
+# Artefacts de build / test / déploiement
+coverage/
+reports/
+deploy.log
+*.log
+npm-debug.log*
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
