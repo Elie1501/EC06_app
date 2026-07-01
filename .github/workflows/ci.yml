@@ -112,7 +112,7 @@ jobs:
       # l'image de base node:alpine hors de notre contrôle ; le rapport
       # reste visible dans les logs du job.
       - name: Scan de l'image (Trivy)
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.32.0
         with:
           image-ref: ${{ steps.first_tag.outputs.tag }}
           format: table
