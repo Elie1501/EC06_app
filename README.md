@@ -4,8 +4,7 @@ Mini API Express (Node.js 20) exposant `GET /health`, industrialisée avec
 **Git + Docker + GitHub Actions**. Le code applicatif n'a pas été modifié :
 l'épreuve porte sur la chaîne de livraison mise autour.
 
-<!-- Badges (à remplacer <owner>/<repo> après création du dépôt) -->
-[![CI/CD](https://github.com/<owner>/<repo>/actions/workflows/ci.yml/badge.svg)](https://github.com/<owner>/<repo>/actions/workflows/ci.yml)
+[![CI/CD](https://github.com/Elie1501/EC06_app/actions/workflows/ci.yml/badge.svg)](https://github.com/Elie1501/EC06_app/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-20-blue)
 ![Docker](https://img.shields.io/badge/docker-multistage-blue)
 
